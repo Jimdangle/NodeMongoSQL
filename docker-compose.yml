@@ -1,0 +1,47 @@
+version: "3.8"
+services:
+  node: #node service
+    build: ./node #check for the node folder containing our docker file 
+    ports:
+      - 3001:3001
+    environment: #env vars 
+      MONGO_URL: mongodb://db-mongo:27017
+      SQL_USER: root
+      SQL_PASS: example
+      SQL_PORT: 3306
+      SQL_HOST: db-sql
+    depends_on:
+      db-mongo:
+        condition: service_started
+      db-sql:
+        condition: service_started
+  db-mongo: #MongoDB Service
+    image: mongo:4.0-xenial
+    ports:
+      - 27017:27017
+    volumes: #volume 
+      - mongo_store:/data/db
+    healthcheck: #healthcheck also very unsure if its working
+      test: ["CMD", "/etc/init.d/mongodb", "status"]
+      timeout: 30s
+      retries: 5
+  db-sql: # SQL Service 
+    image: mysql
+    command: --default-authentication-plugin=mysql_native_password && --init-file /data/application/init.sql  #Not recommended for production
+    
+    restart: always
+    environment: #environment vars 
+      MYSQL_ROOT_PASSWORD: example #shit password
+      MYSQL_DATABASE: dev #this should be creating a database but it doesnt seem to rn
+    ports:
+      - 3306:3306
+    volumes:
+      - sql_store:/var/lib/mysql #local volume, add an init file here later with  '- ./init.sql:/data/application/init.sql' as a volume
+      - ./init.sql:/data/application/init.sql
+    healthcheck: #check if pingable, not really working for somereason even though it says it is
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+volumes:
+  mongo_store:
+  sql_store:
